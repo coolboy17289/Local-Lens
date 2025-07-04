@@ -1,0 +1,6 @@
+{
+  "story": "first public test 7?4?2035 2:03pm nz time",
+  "latitude": -40.628540393397394,
+  "longitude": 175.78125000000003,
+  "timestamp": "2025-07-04T02:03:17.521855"
+}
