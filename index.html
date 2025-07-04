@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Local Lens - Share Your Story with the World</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: #f4f4f4;
+    }
+    header {
+      background: linear-gradient(90deg, #1d3557, #457b9d);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 2em;
+    }
+    #map {
+      flex: 1;
+      z-index: 1;
+    }
+    #storyForm {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: white;
+      border-top: 2px solid #ddd;
+      display: flex;
+      gap: 10px;
+      padding: 10px;
+      z-index: 1000;
+      box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
+    }
+    #storyForm textarea {
+      flex: 1;
+      padding: 10px;
+      font-size: 1em;
+      resize: none;
+      height: 60px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    #storyForm button {
+      background-color: #1d3557;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    #storyForm button:hover {
+      background-color: #457b9d;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Local Lens</h1>
+    <p>Share a story from your location. One pin. One voice. One world.</p>
+  </header>
+
+  <div id="map"></div>
+
+  <form id="storyForm">
+    <textarea id="story" placeholder="Write your story here... (max 300 characters)" maxlength="300" required></textarea>
+    <button type="submit">Pin</button>
+  </form>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let selectedLatLng = null;
+    let markerPreview = null;
+
+    map.on('click', function (e) {
+      selectedLatLng = e.latlng;
+      if (markerPreview) map.removeLayer(markerPreview);
+      markerPreview = L.marker(selectedLatLng, { opacity: 0.5 }).addTo(map);
+      markerPreview.bindPopup("Now write your story below.").openPopup();
+    });
+
+    document.getElementById('storyForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const story = document.getElementById('story').value.trim();
+
+      if (!selectedLatLng) {
+        alert('Click on the map to choose a location first!');
+        return;
+      }
+      if (!story) {
+        alert('Please write something meaningful.');
+        return;
+      }
+
+      const marker = L.marker(selectedLatLng).addTo(map);
+      marker.bindPopup(`<strong>Story:</strong><br>${story}`).openPopup();
+
+      try {
+        const res = await fetch('/submit-story', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            story: story,
+            lat: selectedLatLng.lat,
+            lng: selectedLatLng.lng
+          })
+        });
+
+        const result = await res.json();
+        if (res.ok && result.success) {
+          console.log("Story saved as:", result.file);
+        } else {
+          alert("Failed to save story: " + (result.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("Error sending story to server.");
+        console.error(err);
+      }
+
+      document.getElementById('story').value = '';
+      selectedLatLng = null;
+      if (markerPreview) map.removeLayer(markerPreview);
+    });
+  </script>
+</body>
+</html>
